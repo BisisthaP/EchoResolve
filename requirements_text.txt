@@ -32,3 +32,117 @@ Pain Point: Lack of Personalized Service leading to missed opportunities for ups
 Feature: CRM Integration for Personalized Interactions & Customer Health Scoring (Simulated):
 Description: Accesses customer history from CRM to personalize responses (e.g., acknowledging past purchases, offering relevant product suggestions) and allows for simulated "customer health scoring" to flag high-value or at-risk customers for prioritized handling or proactive outreach.
 AI/Tech: CRM integration (simulated), data analysis for personalized recommendations, basic customer segmentation logic.
+
+
+
+
+
+
+
+You are an expert Python developer tasked with creating a conversational AI application for the EchoResolve project, an AI-powered voice assistant for real-time customer service. The application must adapt the provided base code (using ElevenLabs' Conversational AI) to implement four specific features, integrating with a pre-defined SQLite database. The code must be robust, handle edge cases, and follow best practices for modularity and error handling. Below are the details:
+
+Base Code Overview:
+The base code uses ElevenLabs' Conversational AI to create a voice assistant that interacts with users, processes their input, and responds based on a prompt. It includes:
+- Environment setup with `AGENT_ID` and `API_KEY` for ElevenLabs.
+- A `Conversation` object with a custom prompt, first message, and callbacks for user transcripts and agent responses.
+- A simple example with a user’s schedule and a greeting message.
+
+Requirements for EchoResolve:
+Adapt the base code to implement the following four features, ensuring integration with the SQLite database (`ORDER.db`) created previously. The database schema and sample data are provided below. The assistant must use natural language understanding (NLU) to parse user intents, query the database, and respond appropriately. The code should handle voice inputs, maintain conversational context, and support real-time interactions.
+
+Features to Implement:
+1. Automated Order Modification:
+   - Description: Allows customers to verbally request changes to their order (e.g., update delivery address, cancel order) in real-time, provided the order hasn’t passed a defined fulfillment threshold.
+   - Functionality:
+     - Parse user requests (e.g., “change my delivery address for order 103” or “cancel my order 107”).
+     - Verify the order exists in the `orders` table and check if `status` is 'pending' or 'confirmed' and `fulfillment_threshold` is in the future.
+     - Update `shipping_address` or set `status` to 'cancelled' in the `orders` table.
+     - Log the interaction in `conversations` and `conversation_messages` with intent 'order_modification'.
+   - Tech: Uses NLU to detect intent, integrates with Order Management System (simulated via `orders` and `order_items` tables).
+   - Edge Cases: Handle invalid order IDs, non-modifiable orders (e.g., shipped or past threshold), and invalid addresses.
+
+2. Voice-Initiated Returns & Exchange Workflow:
+   - Description: Guides customers through initiating returns or exchanges for damaged/incorrect items, verifying order details, and generating a return label (simulated as a URL).
+   - Functionality:
+     - Parse requests (e.g., “return order 104, it’s damaged”).
+     - Verify the order and item in `orders` and `order_items`, check eligibility (e.g., `return_status` = 'none' or 'requested').
+     - Create a record in the `returns` table with `status` = 'initiated' and update `order_items.return_status`.
+     - Simulate label generation by adding a URL to `returns.return_label_url`.
+     - Log interaction in `conversations` and `conversation_messages` with intent 'return_request'.
+   - Tech: Uses NLU for intent and reason detection, integrates with Returns Management System (simulated via `returns` table).
+   - Edge Cases: Handle ineligible returns (e.g., already returned items), invalid order/item IDs, and missing reasons.
+
+3. Real-time Product Information & Store Inventory Lookup:
+   - Description: Enables customers to inquire about product details (e.g., features, price) and check real-time online or in-store inventory at specific locations.
+   - Functionality:
+     - Parse queries (e.g., “tell me about the smartphone” or “is the laptop in stock in New York?”).
+     - Query `products` for details (e.g., `description`, `features`, `price`, `online_stock`).
+     - Query `store_inventory` and `stores` for location-specific stock (e.g., `stock_quantity` for a `product_id` at a `store_id`).
+     - Log interaction in `conversations` and `conversation_messages` with intent 'product_query'.
+   - Tech: Integrates with Inventory Management System (simulated via `products`, `stores`, `store_inventory`).
+   - Edge Cases: Handle unknown products, unavailable stock, or invalid store locations.
+
+4. Intelligent Triage & Self-Service Resolution:
+   - Description: Identifies customer intent to resolve common queries (e.g., “where is my order?”, “what’s your return policy?”) via self-service or escalates complex issues to a human agent with context.
+   - Functionality:
+     - Parse intents (e.g., ‘order_status’, ‘return_policy’, ‘product_query’) using NLU.
+     - For common queries, retrieve answers from the `faq` table (e.g., “Where is my order?” → fetch FAQ answer).
+     - For order-specific queries (e.g., “status of order 103”), query `orders` and respond with `status`.
+     - For complex queries, update `conversations.escalation_status` to 'escalated', assign an `agent_id` from `agents` where `status` = 'available', and provide context from `conversation_messages`.
+     - Log all interactions in `conversations` and `conversation_messages`.
+   - Tech: Uses NLU for intent recognition, integrates with FAQ and escalation logic.
+   - Edge Cases: Handle unknown intents, unavailable agents, or missing FAQ entries.
+
+Database Schema (ORDER.db):
+The SQLite database contains the following tables with relevant columns:
+1. customers: `customer_id` (PK), `first_name`, `last_name`, `email` (unique), `address`, `phone`, `created_at`, `updated_at`.
+2. orders: `order_id` (PK), `customer_id` (FK), `order_date`, `total_amount`, `status` ('pending', 'confirmed', 'shipped', 'delivered', 'cancelled'), `shipping_address`, `fulfillment_threshold`, `created_at`, `updated_at`.
+3. order_items: `order_item_id` (PK), `order_id` (FK), `product_id` (FK), `quantity`, `unit_price`, `return_status` ('none', 'requested', 'approved', 'completed'), `return_reason`.
+4. returns: `return_id` (PK), `order_id` (FK), `order_item_id` (FK), `customer_id` (FK), `return_reason`, `status` ('initiated', 'approved', 'label_generated', 'completed'), `return_label_url`, `created_at`, `updated_at`.
+5. products: `product_id` (PK), `name`, `description`, `features`, `price`, `online_stock`, `category`, `created_at`, `updated_at`.
+6. stores: `store_id` (PK), `store_name`, `address`, `phone`, `region`.
+7. store_inventory: `inventory_id` (PK), `product_id` (FK), `store_id` (FK), `stock_quantity`, `last_updated`.
+8. faq: `faq_id` (PK), `question`, `answer`, `category`, `last_updated`.
+9. conversations: `conversation_id` (PK), `customer_id` (FK), `start_time`, `end_time`, `intent`, `escalation_status` ('self_resolved', 'escalated', 'pending'), `agent_id` (FK).
+10. conversation_messages: `message_id` (PK), `conversation_id` (FK), `sender` ('customer', 'assistant'), `message_text`, `timestamp`.
+11. agents: `agent_id` (PK), `name`, `email`, `status` ('available', 'busy', 'offline').
+
+Sample Data:
+- `customers`: 5 customers (e.g., John Smith, ID 1, email: john.smith@email.com).
+- `orders`: 8 orders (e.g., order 103, status 'pending', fulfillment_threshold in future).
+- `order_items`: Items linked to orders (e.g., order 104 with a damaged coffee maker, return_status 'requested').
+- `returns`: 2 return requests (e.g., order 104, status 'initiated', reason 'damaged').
+- `products`: 5 products (e.g., Wireless Headphones, price $99.99, online_stock 50).
+- `stores`: 3 stores (e.g., New York Store, store_id 1).
+- `store_inventory`: Stock levels (e.g., 10 headphones in New York).
+- `faq`: 3 FAQs (e.g., “Where is my order?” with answer).
+- `agents`: 2 agents (e.g., Alice Carter, status 'available').
+- `conversations` and `conversation_messages`: Sample interactions (e.g., order status query, return request).
+
+Code Requirements:
+- Language: Python, using ElevenLabs' Conversational AI SDK (as in base code).
+- Database Integration: Use `sqlite3` to connect to `ORDER.db` and query/update tables based on user intents.
+- Intent Handling: Simulate NLU by parsing user input (via `conversation_messages.message_text`) for keywords/patterns to detect intents (e.g., 'order status', 'return', 'product info'). For simplicity, use rule-based parsing (e.g., check for keywords like “cancel”, “return”, “stock”).
+- Conversation Flow:
+  - Greet the user (e.g., “Hello, how can I assist you today?”).
+  - Process user input, query the database, and respond based on intent.
+  - Log all interactions in `conversations` and `conversation_messages`.
+  - For escalations (Feature 4), assign an available agent and include conversation context.
+- Callbacks: Use the base code’s callbacks (`print_agent_response`, `print_interrupted_response`, `print_user_transcript`) to log interactions, but extend them to save to `conversation_messages`.
+- Error Handling: Handle invalid inputs (e.g., unknown order IDs, unavailable products, no available agents) with user-friendly responses.
+- Prompt Customization: Update the ElevenLabs `prompt` to describe EchoResolve’s capabilities (supporting Features 1–4) and instruct the assistant to query the database when needed.
+- Output: Provide a single Python script wrapped in an `<xaiArtifact>` tag with `artifact_id` as a new UUID, `title="echoresolve.py"`, and `contentType="text/python"`.
+
+Constraints:
+- Do not use external file I/O or network calls beyond ElevenLabs API and SQLite.
+- Ensure compatibility with the provided database schema and sample data.
+- Avoid modifying the database schema in the code.
+- Keep the code modular, with separate functions for each feature’s logic (e.g., `modify_order`, `initiate_return`, `lookup_product`, `handle_triage`).
+
+Expected Behavior:
+- User says: “Change my delivery address for order 103 to 999 New St, LA” → Update `orders.shipping_address` if modifiable, respond with confirmation, log interaction.
+- User says: “Return order 104, it’s damaged” → Create a `returns` record, update `order_items.return_status`, respond with label URL, log interaction.
+- User says: “Is the smartphone in stock in New York?” → Query `products` and `store_inventory`, respond with stock details, log interaction.
+- User says: “Where is my order 103?” → Query `orders`, respond with status, log interaction. For complex queries (e.g., “Why is my order delayed?”), escalate to an agent.
+
+Generate the complete Python code, ensuring it meets all requirements and integrates seamlessly with the database and ElevenLabs API.
