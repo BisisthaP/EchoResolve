@@ -176,7 +176,7 @@ from elevenlabs.conversational_ai.conversation import Conversation
 from elevenlabs.conversational_ai.default_audio_interface import DefaultAudioInterface
 from elevenlabs.types import ConversationConfig
 
-# --- Import our new database handler functions ---
+# --- Import our database handler functions ---
 from database_handler import process_return_for_order, extract_order_id
 
 # Load environment variables
@@ -194,7 +194,6 @@ class ConversationManager:
         self.conversation = None
 
     def set_conversation(self, conversation_instance):
-        """Store the conversation object to allow sending text back to the LLM."""
         self.conversation = conversation_instance
 
 conversation_manager = ConversationManager()
@@ -213,6 +212,10 @@ first_message = "Thank you for calling Aurora Commerce. How can I help you today
 
 # --- Configuration for the Session ---
 conversation_override = {"agent": {"prompt": {"prompt": prompt}, "first_message": first_message}}
+
+# --- THIS IS THE CORRECTED LINE ---
+# The ConversationConfig class in the latest library version is simpler.
+# We no longer need to pass extra_body or dynamic_variables.
 config = ConversationConfig(conversation_config_override=conversation_override)
 
 client = ElevenLabs(api_key=API_KEY)
@@ -237,26 +240,20 @@ def process_user_transcript(transcript: str):
 
         if order_id:
             print(f">>> SYSTEM: Extracted Order ID: {order_id}. Processing return...")
-            # Call the database function
             result_message = process_return_for_order(order_id)
             print(f">>> SYSTEM: Database result: {result_message}")
             
-            # Send the result back to the LLM to inform its next response
             if conversation_manager.conversation:
                 conversation_manager.conversation.send_text(f"SYSTEM_MESSAGE: {result_message}")
             
-            # Reset the state
             conversation_manager.state = "IDLE"
         else:
             print(">>> SYSTEM: No Order ID found in transcript. Letting agent re-prompt.")
-            # Let the agent handle it. The prompt guides it to re-ask.
             if conversation_manager.conversation:
                  conversation_manager.conversation.send_text("SYSTEM_MESSAGE: User did not provide a valid number. Please ask for the order number again politely.")
 
     elif "return" in transcript_lower:
         print(">>> SYSTEM: Keyword 'return' detected. Setting state to AWAITING_ORDER_ID_FOR_RETURN.")
-        # The prompt will make the agent ask for the order number automatically.
-        # We just need to set our state to be ready for the user's next response.
         conversation_manager.state = "AWAITING_ORDER_ID_FOR_RETURN"
 
 # --- Main Execution Block ---
@@ -273,10 +270,9 @@ try:
         callback_user_transcript=process_user_transcript,
     )
 
-    # Give the manager access to the conversation object
     conversation_manager.set_conversation(conversation)
-
     conversation.start_session()
 
 except Exception as e:
     print(f"An error occurred: {e}")
+
